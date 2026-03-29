@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow — Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Fraunces', 'serif'],
+            body: ['DM Sans', 'sans-serif'],
+            mono: ['DM Mono', 'monospace'],
+          },
+          colors: {
+            ink: { DEFAULT: '#0f0e0d', 50: '#faf9f7', 100: '#f0ede8', 200: '#ddd8cf', 300: '#c2b9ab', 400: '#a09486', 500: '#7d6f61', 600: '#5e5148', 700: '#453a33', 800: '#2e261f', 900: '#1a1510', },
+            sage: { DEFAULT: '#4a7c59', light: '#e8f0ea', mid: '#8fb89a', },
+            amber: { DEFAULT: '#c97d2e', light: '#fdf3e3', mid: '#e8b87a', },
+            rose: { DEFAULT: '#b94a4a', light: '#fdeaea', mid: '#d98a8a', },
+            sky: { DEFAULT: '#3a6fa8', light: '#e8f0f8', mid: '#7aaad4', },
+          },
+          boxShadow: {
+            'card': '0 1px 3px 0 rgba(15,14,13,0.08), 0 1px 2px -1px rgba(15,14,13,0.06)',
+            'elevated': '0 4px 16px -2px rgba(15,14,13,0.12), 0 2px 6px -1px rgba(15,14,13,0.08)',
+            'modal': '0 20px 60px -10px rgba(15,14,13,0.25)',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'DM Sans', sans-serif; background: #faf9f7; color: #0f0e0d; }
+
+    .auth-bg {
+      background: #0f0e0d;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 20% 80%, rgba(74,124,89,0.25) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 20%, rgba(58,111,168,0.2) 0%, transparent 60%);
+      min-height: 100vh;
+    }
+    .auth-card {
+      background: rgba(250,249,247,0.04);
+      border: 1px solid rgba(250,249,247,0.1);
+      backdrop-filter: blur(20px);
+    }
+    .auth-input {
+      background: rgba(250,249,247,0.06);
+      border: 1px solid rgba(250,249,247,0.12);
+      color: #faf9f7;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .auth-input::placeholder { color: rgba(250,249,247,0.35); }
+    .auth-input:focus { outline: none; border-color: rgba(74,124,89,0.7); background: rgba(250,249,247,0.09); }
+    .auth-btn {
+      background: #4a7c59;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .auth-btn:hover { background: #3d6b4a; }
+    .auth-btn:active { transform: scale(0.99); }
+    .auth-tab { color: rgba(250,249,247,0.45); cursor: pointer; transition: color 0.15s; border-bottom: 2px solid transparent; padding-bottom: 6px; }
+    .auth-tab.active { color: #faf9f7; border-bottom-color: #4a7c59; }
+
+    .sidebar { background: #1a1510; width: 240px; flex-shrink: 0; }
+    .nav-item { color: rgba(250,249,247,0.5); transition: color 0.15s, background 0.15s; border-radius: 8px; }
+    .nav-item:hover { color: rgba(250,249,247,0.85); background: rgba(250,249,247,0.05); }
+    .nav-item.active { color: #faf9f7; background: rgba(74,124,89,0.25); }
+    .nav-item.active .nav-icon { color: #8fb89a; }
+
+    .task-card {
+      background: #fff;
+      border: 1px solid #e8e3dc;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(15,14,13,0.06);
+      transition: box-shadow 0.15s, transform 0.15s;
+      cursor: pointer;
+    }
+    .task-card:hover { box-shadow: 0 4px 16px rgba(15,14,13,0.1); transform: translateY(-1px); }
+
+    .badge { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 4px; font-weight: 500; }
+    .badge-todo { background: #f0ede8; color: #5e5148; }
+    .badge-in-progress { background: #e8f0f8; color: #3a6fa8; }
+    .badge-review { background: #fdf3e3; color: #c97d2e; }
+    .badge-done { background: #e8f0ea; color: #4a7c59; }
+    .badge-low { background: #f0ede8; color: #7d6f61; }
+    .badge-medium { background: #e8f0f8; color: #3a6fa8; }
+    .badge-high { background: #fdf3e3; color: #c97d2e; }
+    .badge-critical { background: #fdeaea; color: #b94a4a; }
+
+    .stat-card { background: #fff; border: 1px solid #e8e3dc; border-radius: 12px; }
+
+    .modal-backdrop { background: rgba(15,14,13,0.55); backdrop-filter: blur(4px); }
+    .modal-content { background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(15,14,13,0.2); }
+    .form-input {
+      border: 1px solid #ddd8cf;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 14px;
+      width: 100%;
+      transition: border-color 0.15s;
+      background: #fff;
+      font-family: 'DM Sans', sans-serif;
+      color: #0f0e0d;
+    }
+    .form-input:focus { outline: none; border-color: #4a7c59; box-shadow: 0 0 0 3px rgba(74,124,89,0.1); }
+    select.form-input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235e5148' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+    .btn-primary { background: #4a7c59; color: #fff; border-radius: 8px; padding: 9px 18px; font-weight: 500; font-size: 14px; transition: background 0.15s; border: none; cursor: pointer; }
+    .btn-primary:hover { background: #3d6b4a; }
+    .btn-secondary { background: #f0ede8; color: #2e261f; border-radius: 8px; padding: 9px 18px; font-weight: 500; font-size: 14px; transition: background 0.15s; border: none; cursor: pointer; }
+    .btn-secondary:hover { background: #ddd8cf; }
+    .btn-danger { background: #fdeaea; color: #b94a4a; border-radius: 8px; padding: 9px 18px; font-weight: 500; font-size: 14px; transition: background 0.15s; border: none; cursor: pointer; }
+    .btn-danger:hover { background: #f8d5d5; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #c2b9ab; border-radius: 3px; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideIn { from { opacity: 0; transform: scale(0.97) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    .fade-in { animation: fadeIn 0.25s ease forwards; }
+    .slide-in { animation: slideIn 0.2s ease forwards; }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; padding: 12px 18px; border-radius: 10px; font-size: 14px; font-weight: 500; box-shadow: 0 4px 16px rgba(15,14,13,0.15); animation: fadeIn 0.2s ease; max-width: 320px; }
+    .toast-success { background: #e8f0ea; color: #2e5e3a; border: 1px solid #8fb89a; }
+    .toast-error { background: #fdeaea; color: #7a2a2a; border: 1px solid #d98a8a; }
+
+    .skeleton { background: linear-gradient(90deg, #f0ede8 25%, #e8e3dc 50%, #f0ede8 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 6px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    .overdue-dot { width: 7px; height: 7px; background: #b94a4a; border-radius: 50%; display: inline-block; margin-right: 5px; }
+  </style>
+</head>
+<body class="h-full">
+
+<div id="authScreen" class="auth-bg flex items-center justify-center p-4" style="min-height:100vh;">
+  <div class="auth-card rounded-2xl p-8 w-full max-w-sm">
+    <div class="mb-8">
+      <div class="flex items-center gap-2 mb-1">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="7" fill="#4a7c59"/>
+          <path d="M8 14.5l4 4 8-9" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="text-white font-display text-xl font-semibold tracking-tight">TaskFlow</span>
+      </div>
+      <p class="text-xs mt-2" style="color:rgba(250,249,247,0.4)">Production Task Management API</p>
+    </div>
+
+    <div class="flex gap-5 mb-6">
+      <button class="auth-tab active text-sm font-medium" onclick="switchAuthTab('login')" id="tabLogin">Sign in</button>
+      <button class="auth-tab text-sm font-medium" onclick="switchAuthTab('register')" id="tabRegister">Register</button>
+    </div>
+
+    <div id="loginForm">
+      <div class="space-y-3">
+        <input id="loginEmail" type="email" placeholder="Email address" class="auth-input w-full rounded-lg px-4 py-2.5 text-sm" />
+        <input id="loginPassword" type="password" placeholder="Password" class="auth-input w-full rounded-lg px-4 py-2.5 text-sm" onkeydown="if(event.key==='Enter')doLogin()" />
+      </div>
+      <button onclick="doLogin()" class="auth-btn mt-4 w-full rounded-lg py-2.5 text-sm font-medium text-white">
+        Sign in →
+      </button>
+    </div>
+
+    <div id="registerForm" class="hidden">
+      <div class="space-y-3">
+        <input id="regName" type="text" placeholder="Full name" class="auth-input w-full rounded-lg px-4 py-2.5 text-sm" />
+        <input id="regEmail" type="email" placeholder="Email address" class="auth-input w-full rounded-lg px-4 py-2.5 text-sm" />
+        <input id="regPassword" type="password" placeholder="Password (min 6 chars, 1 number)" class="auth-input w-full rounded-lg px-4 py-2.5 text-sm" onkeydown="if(event.key==='Enter')doRegister()" />
+      </div>
+      <button onclick="doRegister()" class="auth-btn mt-4 w-full rounded-lg py-2.5 text-sm font-medium text-white">
+        Create account →
+      </button>
+      <p class="text-xs mt-3 text-center" style="color:rgba(250,249,247,0.3)">First user registered becomes admin</p>
+    </div>
+
+    <div id="authError" class="hidden mt-3 text-xs text-center" style="color:#d98a8a;"></div>
+  </div>
+</div>
+<div id="appShell" class="hidden flex h-screen overflow-hidden">
+
+  <aside class="sidebar flex flex-col py-5 px-3">
+    <div class="flex items-center gap-2 px-3 mb-7">
+      <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="7" fill="#4a7c59"/>
+        <path d="M8 14.5l4 4 8-9" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="text-white font-display text-base font-semibold tracking-tight">TaskFlow</span>
+    </div>
+
+    <nav class="flex-1 space-y-1">
+      <button onclick="showView('dashboard')" class="nav-item active w-full flex items-center gap-3 px-3 py-2 text-sm font-medium" id="nav-dashboard">
+        <svg class="nav-icon w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </button>
+      <button onclick="showView('tasks')" class="nav-item w-full flex items-center gap-3 px-3 py-2 text-sm font-medium" id="nav-tasks">
+        <svg class="nav-icon w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        My Tasks
+      </button>
+      <button onclick="showView('create')" class="nav-item w-full flex items-center gap-3 px-3 py-2 text-sm font-medium" id="nav-create">
+        <svg class="nav-icon w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+        New Task
+      </button>
+      <div id="adminNav" class="hidden">
+        <div class="px-3 pt-4 pb-1">
+          <span class="text-xs font-mono uppercase tracking-widest" style="color:rgba(250,249,247,0.2)">Admin</span>
+        </div>
+        <button onclick="showView('users')" class="nav-item w-full flex items-center gap-3 px-3 py-2 text-sm font-medium" id="nav-users">
+          <svg class="nav-icon w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+          Users
+        </button>
+      </div>
+    </nav>
+
+    <div class="px-3 pt-4 border-t" style="border-color:rgba(250,249,247,0.08)">
+      <div class="flex items-center gap-3">
+        <div id="sidebarAvatar" class="w-8 h-8 rounded-full bg-sage flex items-center justify-center text-white text-xs font-semibold font-mono flex-shrink-0"></div>
+        <div class="flex-1 min-w-0">
+          <div id="sidebarName" class="text-xs font-medium text-white truncate"></div>
+          <div id="sidebarRole" class="text-xs font-mono" style="color:rgba(250,249,247,0.4)"></div>
+        </div>
+        <button onclick="logout()" title="Sign out" style="color:rgba(250,249,247,0.35)" class="hover:text-white transition-colors flex-shrink-0">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="flex-1 overflow-y-auto">
+
+    <div id="view-dashboard" class="p-8">
+      <div class="mb-7">
+        <h1 class="font-display text-2xl font-semibold text-ink-900">Good <span id="greeting"></span> 👋</h1>
+        <p class="text-sm text-ink-400 mt-1">Here's what's happening with your tasks.</p>
+      </div>
+
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="stat-card p-4">
+          <div class="text-xs text-ink-400 font-mono uppercase tracking-wider mb-2">Total</div>
+          <div class="text-2xl font-display font-semibold text-ink-900" id="statTotal">—</div>
+        </div>
+        <div class="stat-card p-4">
+          <div class="text-xs text-sky font-mono uppercase tracking-wider mb-2">In Progress</div>
+          <div class="text-2xl font-display font-semibold text-sky" id="statInProgress">—</div>
+        </div>
+        <div class="stat-card p-4">
+          <div class="text-xs text-sage font-mono uppercase tracking-wider mb-2">Done</div>
+          <div class="text-2xl font-display font-semibold text-sage" id="statDone">—</div>
+        </div>
+        <div class="stat-card p-4">
+          <div class="text-xs text-rose font-mono uppercase tracking-wider mb-2">Overdue</div>
+          <div class="text-2xl font-display font-semibold text-rose" id="statOverdue">—</div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-ink-800 text-sm">Recent Tasks</h2>
+        <button onclick="showView('tasks')" class="text-xs text-sage hover:underline">View all →</button>
+      </div>
+      <div id="recentTasks" class="space-y-2"></div>
+    </div>
+
+    <div id="view-tasks" class="hidden p-8">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="font-display text-2xl font-semibold text-ink-900">My Tasks</h1>
+          <p class="text-sm text-ink-400 mt-0.5" id="taskCount">Loading…</p>
+        </div>
+        <button onclick="showView('create')" class="btn-primary flex items-center gap-2">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          New Task
+        </button>
+      </div>
+
+      <div class="flex flex-wrap gap-2 mb-5">
+        <select id="filterStatus" onchange="applyFilters()" class="form-input !w-auto text-xs py-1.5">
+          <option value="">All statuses</option>
+          <option value="todo">To Do</option>
+          <option value="in-progress">In Progress</option>
+          <option value="review">Review</option>
+          <option value="done">Done</option>
+        </select>
+        <select id="filterPriority" onchange="applyFilters()" class="form-input !w-auto text-xs py-1.5">
+          <option value="">All priorities</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+        <input id="filterSearch" type="text" placeholder="Search…" oninput="debounceSearch()" class="form-input !w-44 text-xs py-1.5" />
+      </div>
+
+      <div id="taskList" class="space-y-2"></div>
+      <div id="taskPagination" class="flex items-center justify-between mt-6 text-sm text-ink-400"></div>
+    </div>
+
+    <div id="view-create" class="hidden p-8 max-w-xl">
+      <div class="mb-6">
+        <h1 class="font-display text-2xl font-semibold text-ink-900" id="formHeading">New Task</h1>
+        <p class="text-sm text-ink-400 mt-0.5" id="formSubheading">Fill in the details below</p>
+      </div>
+
+      <div class="bg-white border border-ink-200 rounded-2xl p-6 space-y-4">
+        <input type="hidden" id="editTaskId" />
+
+        <div>
+          <label class="block text-xs font-medium text-ink-500 mb-1.5">Title <span class="text-rose">*</span></label>
+          <input id="taskTitle" type="text" placeholder="What needs to be done?" class="form-input" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-ink-500 mb-1.5">Description</label>
+          <textarea id="taskDesc" placeholder="Add more context…" rows="3" class="form-input resize-none"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-ink-500 mb-1.5">Status</label>
+            <select id="taskStatus" class="form-input">
+              <option value="todo">To Do</option>
+              <option value="in-progress">In Progress</option>
+              <option value="review">Review</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-ink-500 mb-1.5">Priority</label>
+            <select id="taskPriority" class="form-input">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-ink-500 mb-1.5">Due Date</label>
+          <input id="taskDueDate" type="date" class="form-input" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-ink-500 mb-1.5">Tags <span class="text-ink-300 font-normal">(comma-separated)</span></label>
+          <input id="taskTags" type="text" placeholder="frontend, bug, api" class="form-input" />
+        </div>
+
+        <div id="formError" class="hidden text-xs text-rose bg-rose-light px-3 py-2 rounded-lg"></div>
+
+        <div class="flex gap-2 pt-1">
+          <button onclick="submitTask()" class="btn-primary flex-1" id="submitBtn">Create Task</button>
+          <button onclick="showView('tasks')" class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-users" class="hidden p-8">
+      <div class="mb-6">
+        <h1 class="font-display text-2xl font-semibold text-ink-900">User Management</h1>
+        <p class="text-sm text-ink-400 mt-0.5">Manage registered users and their roles</p>
+      </div>
+      <div id="userList" class="space-y-2"></div>
+    </div>
+
+  </main>
+</div>
+
+<div id="taskModal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-50">
+  <div class="modal-content slide-in w-full max-w-md p-6">
+    <div class="flex items-start justify-between mb-4">
+      <h2 id="modalTitle" class="font-display text-lg font-semibold text-ink-900 pr-4 leading-snug"></h2>
+      <button onclick="closeModal()" class="text-ink-300 hover:text-ink-600 flex-shrink-0">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div id="modalDesc" class="text-sm text-ink-500 mb-4 leading-relaxed"></div>
+
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div class="bg-ink-50 rounded-lg p-3">
+        <div class="text-xs text-ink-400 font-mono mb-1">Status</div>
+        <div id="modalStatus"></div>
+      </div>
+      <div class="bg-ink-50 rounded-lg p-3">
+        <div class="text-xs text-ink-400 font-mono mb-1">Priority</div>
+        <div id="modalPriority"></div>
+      </div>
+    </div>
+
+    <div id="modalMeta" class="text-xs text-ink-400 font-mono space-y-1 mb-5"></div>
+
+    <div id="modalTags" class="flex flex-wrap gap-1 mb-5"></div>
+
+    <div class="border-t border-ink-100 pt-4 mb-4">
+      <div class="text-xs font-medium text-ink-500 mb-2">Quick status update</div>
+      <div class="flex flex-wrap gap-1.5" id="modalStatusBtns"></div>
+    </div>
+
+    <div class="flex gap-2">
+      <button onclick="editCurrentTask()" class="btn-secondary text-xs flex-1">Edit</button>
+      <button onclick="deleteCurrentTask()" class="btn-danger text-xs flex-1">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script>
+const API = '/api/v1';
+let currentUser = null;
+let currentPage = 1;
+let currentTask = null;
+let searchTimer = null;
+
+const token = () => localStorage.getItem('tf_token');
+const $ = (id) => document.getElementById(id);
+
+function authHeaders() {
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` };
+}
+
+async function api(method, path, body) {
+  const res = await fetch(API + path, {
+    method,
+    headers: authHeaders(),
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || data.errors?.[0]?.message || 'Request failed');
+  return data;
+}
+
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  $('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function setGreeting() {
+  const h = new Date().getHours();
+  $('greeting').textContent = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function statusBadge(s) {
+  const map = { todo: 'To Do', 'in-progress': 'In Progress', review: 'Review', done: 'Done' };
+  return `<span class="badge badge-${s}">${map[s] || s}</span>`;
+}
+
+function priorityBadge(p) {
+  return `<span class="badge badge-${p}">${p.charAt(0).toUpperCase() + p.slice(1)}</span>`;
+}
+
+function avatar(name) {
+  return (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+}
+
+function switchAuthTab(tab) {
+  $('loginForm').classList.toggle('hidden', tab !== 'login');
+  $('registerForm').classList.toggle('hidden', tab !== 'register');
+  $('tabLogin').classList.toggle('active', tab === 'login');
+  $('tabRegister').classList.toggle('active', tab === 'register');
+  $('authError').classList.add('hidden');
+}
+
+async function doLogin() {
+  const email = $('loginEmail').value.trim();
+  const password = $('loginPassword').value;
+  try {
+    const data = await fetch(`${API}/auth/login`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    }).then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.message); return d; });
+    localStorage.setItem('tf_token', data.token);
+    initApp(data.user);
+  } catch (e) {
+    $('authError').textContent = e.message;
+    $('authError').classList.remove('hidden');
+  }
+}
+
+async function doRegister() {
+  const name = $('regName').value.trim();
+  const email = $('regEmail').value.trim();
+  const password = $('regPassword').value;
+  try {
+    const data = await fetch(`${API}/auth/register`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password }),
+    }).then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.message || d.errors?.[0]?.message); return d; });
+    localStorage.setItem('tf_token', data.token);
+    initApp(data.user);
+  } catch (e) {
+    $('authError').textContent = e.message;
+    $('authError').classList.remove('hidden');
+  }
+}
+
+function logout() {
+  localStorage.removeItem('tf_token');
+  currentUser = null;
+  $('authScreen').classList.remove('hidden');
+  $('appShell').classList.add('hidden');
+  $('authError').classList.add('hidden');
+  $('loginEmail').value = '';
+  $('loginPassword').value = '';
+}
+
+function initApp(user) {
+  currentUser = user;
+  $('authScreen').classList.add('hidden');
+  $('appShell').classList.remove('hidden');
+
+  $('sidebarAvatar').textContent = avatar(user.name);
+  $('sidebarName').textContent = user.name;
+  $('sidebarRole').textContent = user.role;
+
+  if (user.role === 'admin') $('adminNav').classList.remove('hidden');
+
+  setGreeting();
+  showView('dashboard');
+}
+
+async function checkStoredAuth() {
+  const t = token();
+  if (!t) return;
+  try {
+    const data = await api('GET', '/auth/me');
+    initApp(data.user);
+  } catch {
+    localStorage.removeItem('tf_token');
+  }
+}
+
+const views = ['dashboard', 'tasks', 'create', 'users'];
+
+function showView(name) {
+  views.forEach(v => {
+    $(`view-${v}`)?.classList.add('hidden');
+    $(`nav-${v}`)?.classList.remove('active');
+  });
+  $(`view-${name}`)?.classList.remove('hidden');
+  $(`nav-${name}`)?.classList.add('active');
+  if (name === 'nav-create') $('nav-tasks')?.classList.remove('active');
+
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'tasks') { currentPage = 1; loadTasks(); }
+  if (name === 'create') resetForm();
+  if (name === 'users') loadUsers();
+}
+
+async function loadDashboard() {
+  try {
+    const [statsRes, tasksRes] = await Promise.all([
+      api('GET', '/tasks/stats'),
+      api('GET', '/tasks?limit=5&sortBy=createdAt&order=desc'),
+    ]);
+    const s = statsRes.data;
+    $('statTotal').textContent = s.total ?? 0;
+    $('statInProgress').textContent = s.inProgress ?? 0;
+    $('statDone').textContent = s.done ?? 0;
+    $('statOverdue').textContent = s.overdue ?? 0;
+
+    const rt = $('recentTasks');
+    if (!tasksRes.data.length) {
+      rt.innerHTML = `<div class="text-sm text-ink-300 py-8 text-center">No tasks yet. <button onclick="showView('create')" class="text-sage underline">Create one →</button></div>`;
+      return;
+    }
+    rt.innerHTML = tasksRes.data.map(t => taskCardHTML(t)).join('');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function loadTasks() {
+  const status = $('filterStatus').value;
+  const priority = $('filterPriority').value;
+  const search = $('filterSearch').value.trim();
+  const params = new URLSearchParams({ page: currentPage, limit: 15, sortBy: 'createdAt', order: 'desc' });
+  if (status) params.set('status', status);
+  if (priority) params.set('priority', priority);
+  if (search) params.set('search', search);
+
+  $('taskList').innerHTML = skeletons(4);
+  try {
+    const res = await api('GET', `/tasks?${params}`);
+    $('taskCount').textContent = `${res.total} task${res.total !== 1 ? 's' : ''}`;
+    if (!res.data.length) {
+      $('taskList').innerHTML = `<div class="text-sm text-ink-300 py-12 text-center">No tasks found.<br><button onclick="showView('create')" class="text-sage underline mt-2 block">Create your first task →</button></div>`;
+      $('taskPagination').innerHTML = '';
+      return;
+    }
+    $('taskList').innerHTML = res.data.map(t => taskCardHTML(t)).join('');
+    renderPagination(res);
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function skeletons(n) {
+  return Array.from({ length: n }, () =>
+    `<div class="task-card p-4 flex gap-3 pointer-events-none">
+      <div class="skeleton h-4 w-1/2 mt-0.5"></div>
+      <div class="skeleton h-4 w-16 mt-0.5 ml-auto"></div>
+    </div>`
+  ).join('');
+}
+
+function taskCardHTML(t) {
+  const overdue = t.isOverdue || (t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done');
+  return `
+  <div class="task-card p-4 fade-in" onclick="openTask('${t._id}')">
+    <div class="flex items-start gap-3">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+          ${statusBadge(t.status)} ${priorityBadge(t.priority)}
+          ${overdue ? `<span class="flex items-center text-rose text-xs font-mono"><span class="overdue-dot"></span>Overdue</span>` : ''}
+        </div>
+        <div class="text-sm font-medium text-ink-800 truncate">${escHtml(t.title)}</div>
+        ${t.description ? `<div class="text-xs text-ink-400 mt-0.5 line-clamp-1">${escHtml(t.description)}</div>` : ''}
+      </div>
+      <div class="flex-shrink-0 text-right">
+        ${t.dueDate ? `<div class="text-xs font-mono text-ink-400">${formatDate(t.dueDate)}</div>` : ''}
+      </div>
+    </div>
+    ${t.tags?.length ? `<div class="flex flex-wrap gap-1 mt-2">${t.tags.map(g => `<span class="text-xs font-mono bg-ink-100 text-ink-500 px-1.5 py-0.5 rounded">${escHtml(g)}</span>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+function renderPagination(res) {
+  if (res.pages <= 1) { $('taskPagination').innerHTML = ''; return; }
+  $('taskPagination').innerHTML = `
+    <button onclick="changePage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''} class="btn-secondary text-xs disabled:opacity-40">← Prev</button>
+    <span class="font-mono text-xs">Page ${res.page} of ${res.pages}</span>
+    <button onclick="changePage(${currentPage + 1})" ${currentPage >= res.pages ? 'disabled' : ''} class="btn-secondary text-xs disabled:opacity-40">Next →</button>`;
+}
+
+function changePage(p) { currentPage = p; loadTasks(); }
+function applyFilters() { currentPage = 1; loadTasks(); }
+function debounceSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(applyFilters, 350); }
+
+async function openTask(id) {
+  try {
+    const res = await api('GET', `/tasks/${id}`);
+    currentTask = res.data;
+    renderModal(currentTask);
+    $('taskModal').classList.remove('hidden');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function renderModal(t) {
+  $('modalTitle').textContent = t.title;
+  $('modalDesc').textContent = t.description || 'No description provided.';
+  $('modalStatus').innerHTML = statusBadge(t.status);
+  $('modalPriority').innerHTML = priorityBadge(t.priority);
+
+  const overdue = t.isOverdue || (t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done');
+  $('modalMeta').innerHTML = [
+    t.dueDate ? `Due: ${formatDate(t.dueDate)}${overdue ? ' <span class="text-rose">(overdue)</span>' : ''}` : null,
+    `Created: ${formatDate(t.createdAt)}`,
+    t.createdBy ? `By: ${escHtml(t.createdBy.name || '')}` : null,
+  ].filter(Boolean).map(l => `<div>${l}</div>`).join('');
+
+  $('modalTags').innerHTML = (t.tags || []).map(g =>
+    `<span class="text-xs font-mono bg-ink-100 text-ink-500 px-2 py-0.5 rounded">${escHtml(g)}</span>`
+  ).join('');
+
+  const statuses = ['todo', 'in-progress', 'review', 'done'];
+  $('modalStatusBtns').innerHTML = statuses.map(s =>
+    `<button onclick="quickStatus('${s}')" class="badge badge-${s} cursor-pointer hover:opacity-80 transition-opacity ${t.status === s ? 'ring-2 ring-offset-1 ring-sage' : ''}">${s === 'in-progress' ? 'In Progress' : s.charAt(0).toUpperCase() + s.slice(1)}</button>`
+  ).join('');
+}
+
+async function quickStatus(status) {
+  try {
+    await api('PATCH', `/tasks/${currentTask._id}/status`, { status });
+    currentTask.status = status;
+    renderModal(currentTask);
+    toast(`Status updated to "${status}"`);
+    if ($('view-tasks').classList.contains('hidden') === false) loadTasks();
+    if ($('view-dashboard').classList.contains('hidden') === false) loadDashboard();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function closeModal() { $('taskModal').classList.add('hidden'); currentTask = null; }
+$('taskModal').addEventListener('click', e => { if (e.target === $('taskModal')) closeModal(); });
+
+function editCurrentTask() {
+  closeModal();
+  const t = currentTask;
+  $('editTaskId').value = t._id;
+  $('formHeading').textContent = 'Edit Task';
+  $('formSubheading').textContent = 'Update the task details below';
+  $('submitBtn').textContent = 'Save Changes';
+  $('taskTitle').value = t.title;
+  $('taskDesc').value = t.description || '';
+  $('taskStatus').value = t.status;
+  $('taskPriority').value = t.priority;
+  $('taskDueDate').value = t.dueDate ? t.dueDate.slice(0, 10) : '';
+  $('taskTags').value = (t.tags || []).join(', ');
+  showView('create');
+}
+
+async function deleteCurrentTask() {
+  if (!confirm('Delete this task? This cannot be undone.')) return;
+  try {
+    await api('DELETE', `/tasks/${currentTask._id}`);
+    toast('Task deleted');
+    closeModal();
+    loadDashboard();
+    if (!$('view-tasks').classList.contains('hidden')) loadTasks();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function resetForm() {
+  $('editTaskId').value = '';
+  $('formHeading').textContent = 'New Task';
+  $('formSubheading').textContent = 'Fill in the details below';
+  $('submitBtn').textContent = 'Create Task';
+  $('taskTitle').value = '';
+  $('taskDesc').value = '';
+  $('taskStatus').value = 'todo';
+  $('taskPriority').value = 'medium';
+  $('taskDueDate').value = '';
+  $('taskTags').value = '';
+  $('formError').classList.add('hidden');
+}
+
+async function submitTask() {
+  const id = $('editTaskId').value;
+  const title = $('taskTitle').value.trim();
+  const description = $('taskDesc').value.trim();
+  const status = $('taskStatus').value;
+  const priority = $('taskPriority').value;
+  const dueDate = $('taskDueDate').value;
+  const tagsRaw = $('taskTags').value.trim();
+  const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+  if (!title) { showFormError('Title is required.'); return; }
+
+  const body = { title, description, status, priority, tags };
+  if (dueDate) body.dueDate = dueDate;
+
+  try {
+    if (id) {
+      await api('PUT', `/tasks/${id}`, body);
+      toast('Task updated!');
+    } else {
+      await api('POST', '/tasks', body);
+      toast('Task created!');
+    }
+    showView('tasks');
+  } catch (e) {
+    showFormError(e.message);
+  }
+}
+
+function showFormError(msg) {
+  $('formError').textContent = msg;
+  $('formError').classList.remove('hidden');
+}
+
+async function loadUsers() {
+  $('userList').innerHTML = skeletons(3);
+  try {
+    const res = await api('GET', '/users');
+    if (!res.data.length) { $('userList').innerHTML = '<div class="text-sm text-ink-300 py-8 text-center">No users found.</div>'; return; }
+    $('userList').innerHTML = res.data.map(u => `
+      <div class="bg-white border border-ink-200 rounded-xl p-4 flex items-center gap-4 fade-in">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-white flex-shrink-0" style="background:${u.role==='admin'?'#4a7c59':'#3a6fa8'}">${avatar(u.name)}</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-ink-800">${escHtml(u.name)}</div>
+          <div class="text-xs text-ink-400 font-mono">${escHtml(u.email)}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="badge ${u.role==='admin'?'badge-done':'badge-in-progress'}">${u.role}</span>
+          <span class="badge ${u.isActive?'badge-done':'badge-critical'}">${u.isActive?'active':'inactive'}</span>
+        </div>
+        <div class="flex gap-1.5 flex-shrink-0">
+          ${u._id !== currentUser._id ? `<button onclick="toggleUser('${u._id}')" class="btn-secondary text-xs py-1 px-2">${u.isActive?'Suspend':'Activate'}</button>` : '<span class="text-xs text-ink-300 font-mono">you</span>'}
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function toggleUser(id) {
+  try {
+    const res = await api('PATCH', `/users/${id}/toggle-status`);
+    toast(res.message);
+    loadUsers();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+checkStoredAuth();
+</script>
+</body>
+</html>
